@@ -10,6 +10,14 @@ for both the object-oriented and functional interfaces.
 
 ## How The System Works
 
+Real platforms combine multiple signals. Content-based filtering compares item
+features such as genre, mood, tempo, and energy with one listener's preferences.
+Collaborative filtering instead learns from behavior across many people, such
+as plays, likes, skips, repeats, and playlists. In both cases the raw song and
+user data are inputs, the taste profile represents preferences, and a ranking
+algorithm selects which candidates appear first. VibeCompass intentionally uses
+the smaller, explainable content-based approach.
+
 Each song includes an id, title, artist, genre, mood, energy, tempo, valence,
 danceability, and acousticness. A basic listener profile supplies a preferred
 genre, preferred mood, and target energy. The object-oriented interface also
@@ -77,10 +85,16 @@ Chill Acoustic Lofi
    Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.50); acousticness similarity (+0.49)
 2. Midnight Coding by LoRoom - Score: 4.83
    Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.40); acousticness similarity (+0.43)
+3. Focus Flow by LoRoom - Score: 3.89
+   Because: genre match (+2.00); energy similarity (+1.42); acousticness similarity (+0.47)
 
 Deep Intense Rock
 1. Storm Runner by Voltline - Score: 4.49
    Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.48)
+2. Gym Hero by Max Pulse - Score: 2.48
+   Because: mood match (+1.00); energy similarity (+1.48)
+3. Neon Pulse by Kairo Flux - Score: 1.43
+   Because: energy similarity (+1.43)
 ```
 
 ## Experiments You Tried
