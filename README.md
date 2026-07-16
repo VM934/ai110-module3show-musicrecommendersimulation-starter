@@ -2,121 +2,123 @@
 
 ## Project Summary
 
-In this project you will build and explain a small music recommender system.
-
-Your goal is to:
-
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
-
-Replace this paragraph with your own summary of what your version does.
-
----
+This version, **VibeCompass 1.0**, ranks a catalog of 17 songs against a
+listener profile. It combines exact genre and mood matches with a continuous
+energy-similarity score, then explains every recommendation in plain language.
+The project includes four evaluation profiles, deterministic ranking, and tests
+for both the object-oriented and functional interfaces.
 
 ## How The System Works
 
-Explain your design in plain language.
+Each song includes an id, title, artist, genre, mood, energy, tempo, valence,
+danceability, and acousticness. A basic listener profile supplies a preferred
+genre, preferred mood, and target energy. The object-oriented interface also
+turns `likes_acoustic` into an acousticness target.
 
-Some prompts to answer:
+The baseline algorithm recipe is:
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+- Exact genre match: **+2.0 points**
+- Exact mood match: **+1.0 point**
+- Energy similarity: up to **+1.5 points**, decreasing as the song moves away
+  from the target energy
+- Optional valence, danceability, and acousticness preferences: up to **+0.5
+  points each**
 
-You can include a simple diagram or bullet list if helpful.
+Every song is scored, the full catalog is sorted from highest to lowest score,
+and the top `k` items are returned. Ties are resolved by title so results are
+repeatable.
 
----
+`User preferences → score every song → sort by score → top-k explained results`
 
 ## Getting Started
 
 ### Setup
 
-1. Create a virtual environment (optional but recommended):
+1. Create and activate a virtual environment:
 
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
-   .venv\Scripts\activate         # Windows
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
 
-2. Install dependencies
+2. Install dependencies:
 
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. Run the app:
 
-```bash
-python -m src.main
-```
+   ```bash
+   python -m src.main
+   ```
 
 ### Running Tests
-
-Run the starter tests with:
 
 ```bash
 pytest
 ```
 
-You can add more tests in `tests/test_recommender.py`.
-
----
-
 ## Sample Recommendation Output
 
-Paste a sample of your recommender's output here as a text block so a reader can see what it produces:
+```text
+Loaded songs: 17
 
+High-Energy Happy Pop
+1. Sunrise City by Neon Echo - Score: 4.47
+   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.47)
+2. Gym Hero by Max Pulse - Score: 3.31
+   Because: genre match (+2.00); energy similarity (+1.30)
+3. Rooftop Lights by Indigo Parade - Score: 2.44
+   Because: mood match (+1.00); energy similarity (+1.44)
+
+Chill Acoustic Lofi
+1. Library Rain by Paper Lanterns - Score: 5.00
+   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.50); acousticness similarity (+0.49)
+2. Midnight Coding by LoRoom - Score: 4.83
+   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.40); acousticness similarity (+0.43)
+
+Deep Intense Rock
+1. Storm Runner by Voltline - Score: 4.49
+   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.48)
 ```
-# e.g.:
-# User profile: genre=indie, mood=chill, energy=low
-# Recommendations:
-#   1. ...
-#   2. ...
-#   3. ...
-```
-
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or demo video link here -->
-
----
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
-
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
-
----
+- **Profile comparison:** Happy Pop selected `Sunrise City`; Chill Lofi selected
+  `Library Rain`; Intense Rock selected `Storm Runner`. These results match the
+  profile features and show that one song does not dominate every list.
+- **Adversarial profile:** A user asking for EDM + sad + 0.95 energy receives
+  `Neon Pulse` first because the catalog has no sad EDM song. This exposes a
+  coverage gap instead of inventing a perfect match.
+- **Weight-shift experiment:** Reducing genre from 2.0 to 0.5 and doubling the
+  energy contribution moved `Rooftop Lights` above `Gym Hero`. The change made
+  close-energy songs more competitive, but also weakened the user's explicit
+  genre preference.
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
-
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
-
----
+- The 17-song classroom catalog is too small to represent real musical taste.
+- Exact text matches treat related genres such as `pop` and `indie pop` as
+  unrelated.
+- Fixed weights can create a filter bubble by repeatedly rewarding the same
+  genre and mood.
+- The model has no listening history, skip behavior, lyrics, culture, language,
+  or changing context.
 
 ## Reflection
 
-Read and complete `model_card.md`:
+Read the complete [Model Card](model_card.md).
 
-[**Model Card**](model_card.md)
+This project showed me that a recommendation can feel intelligent even when it
+is only a transparent weighted formula. The most important engineering step was
+not sorting the songs; it was deciding what each feature should mean and making
+the score explainable. Keeping the reasons beside every score made it much
+easier to catch results that were mathematically valid but did not match the
+profile's intent.
 
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
-
-
+AI helped accelerate the implementation and test design, but I still had to
+verify the import path, numeric conversions, and rankings by running the code.
+The conflicting EDM/sad profile was the clearest reminder that an algorithm can
+only choose from its data. A larger system would need broader data, learned or
+personalized weights, diversity controls, and feedback from real listeners.
