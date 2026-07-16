@@ -2,6 +2,7 @@ from src.recommender import (
     Recommender,
     Song,
     UserProfile,
+    load_songs,
     recommend_songs,
     score_song,
 )
@@ -91,3 +92,25 @@ def test_functional_recommender_ranks_and_limits_results():
     assert len(results) == 1
     assert results[0][0]["title"] == "Best"
     assert isinstance(results[0][2], str)
+
+
+def test_catalog_loads_required_number_of_typed_songs():
+    songs = load_songs("data/songs.csv")
+    assert len(songs) == 17
+    assert isinstance(songs[0]["id"], int)
+    assert isinstance(songs[0]["energy"], float)
+    assert isinstance(songs[0]["tempo_bpm"], float)
+
+
+def test_distinct_profiles_produce_distinct_top_results():
+    songs = load_songs("data/songs.csv")
+    profiles = [
+        {"genre": "pop", "mood": "happy", "energy": 0.8},
+        {"genre": "lofi", "mood": "chill", "energy": 0.35},
+        {"genre": "rock", "mood": "intense", "energy": 0.92},
+    ]
+    leaders = {
+        recommend_songs(profile, songs, k=3)[0][0]["title"]
+        for profile in profiles
+    }
+    assert leaders == {"Sunrise City", "Library Rain", "Storm Runner"}

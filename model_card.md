@@ -55,8 +55,8 @@ Rock, and a conflicting Sad EDM workout profile. I compared their top five
 results and checked that different profiles produced different leaders. I also
 reduced the genre weight from 2.0 to 0.5 and doubled the energy weight; this
 moved `Rooftop Lights` above `Gym Hero`, showing how sensitive the ranking is to
-human-selected weights. Four automated tests verify ordering, explanations,
-score structure, and top-k behavior.
+human-selected weights. Six automated tests verify ordering, explanations,
+score structure, catalog loading, distinct profiles, and top-k behavior.
 
 ## 8. Future Work
 
