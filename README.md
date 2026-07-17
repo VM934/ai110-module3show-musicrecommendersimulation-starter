@@ -1,138 +1,191 @@
-# 🎵 Music Recommender Simulation
+# 🎵 VibeCompass 2.0 — Music Recommender Simulation
 
-## Project Summary
+VibeCompass is an explainable, content-based music recommender. It ranks a
+17-song catalog against a listener profile, supports four interchangeable
+scoring modes, reduces repetitive results with diversity reranking, and prints
+the reasons behind every score in a transparent ASCII table.
 
-This version, **VibeCompass 1.0**, ranks a catalog of 17 songs against a
-listener profile. It combines exact genre and mood matches with a continuous
-energy-similarity score, then explains every recommendation in plain language.
-The project includes four evaluation profiles, deterministic ranking, and tests
-for both the object-oriented and functional interfaces.
+## How the System Works
 
-## How The System Works
+Real platforms such as Spotify and YouTube combine many signals. Content-based
+filtering compares song features—genre, mood, tempo, energy, and other audio
+attributes—with one listener's preferences. Collaborative filtering instead
+uses behavior across many listeners, such as plays, likes, skips, repeats, and
+playlist co-occurrence. In both cases, catalog and behavior data are inputs, a
+user profile represents taste, and a ranking algorithm selects what appears
+first. VibeCompass intentionally uses the smaller, auditable content-based
+approach so every recommendation can be traced to a rule.
 
-Real platforms combine multiple signals. Content-based filtering compares item
-features such as genre, mood, tempo, and energy with one listener's preferences.
-Collaborative filtering instead learns from behavior across many people, such
-as plays, likes, skips, repeats, and playlists. In both cases the raw song and
-user data are inputs, the taste profile represents preferences, and a ranking
-algorithm selects which candidates appear first. VibeCompass intentionally uses
-the smaller, explainable content-based approach.
+`User preferences → score every song → apply diversity reranking → top-k explained results`
 
-Each song includes an id, title, artist, genre, mood, energy, tempo, valence,
-danceability, and acousticness. A basic listener profile supplies a preferred
-genre, preferred mood, and target energy. The object-oriented interface also
-turns `likes_acoustic` into an acousticness target.
+### Song and Profile Features
 
-The baseline algorithm recipe is:
+Every song has an ID, title, artist, genre, mood, energy, tempo, valence,
+danceability, and acousticness. The stretch implementation adds five more
+meaningful attributes and uses each in scoring when the profile supplies a
+target:
 
-- Exact genre match: **+2.0 points**
-- Exact mood match: **+1.0 point**
-- Energy similarity: up to **+1.5 points**, decreasing as the song moves away
-  from the target energy
-- Optional valence, danceability, and acousticness preferences: up to **+0.5
-  points each**
+- popularity (0–100)
+- release year
+- instrumentalness (0.0–1.0)
+- speechiness (0.0–1.0)
+- duration in seconds
 
-Every song is scored, the full catalog is sorted from highest to lowest score,
-and the top `k` items are returned. Ties are resolved by title so results are
-repeatable.
+Profiles always include genre, mood, and target energy. They may also include
+targets for any numeric song attribute. This lets a profile distinguish, for
+example, a short vocal workout track from a long instrumental study track.
 
-`User preferences → score every song → sort by score → top-k explained results`
+### Scoring and Ranking Recipe
 
-## Getting Started
+The default `balanced` strategy awards:
 
-### Setup
+- exact genre match: +2.0
+- exact mood match: +1.0
+- energy similarity: up to +1.5
+- optional valence, danceability, and acousticness similarities: up to +0.5 each
+- optional popularity, release year, instrumentalness, speechiness, and
+  duration similarities: up to +0.2–0.4 each
 
-1. Create and activate a virtual environment:
+Similarity is continuous: a song close to a numeric target earns more than a
+distant song, but no mismatch subtracts points. All songs are scored, sorted by
+score, and tie-broken by title for deterministic output.
 
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+The `ScoringStrategy` pattern keeps ranking policy separate from the scoring
+engine. A user switches modes without changing code:
 
-2. Install dependencies:
+- `balanced`: balances genre, mood, and energy
+- `genre_first`: makes an exact genre match most important
+- `mood_first`: emphasizes emotional context
+- `energy_focus`: emphasizes energy similarity
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+After base scoring, optional diversity reranking applies a 0.75-point penalty
+for each already-selected song by the same artist and 0.25 points for each
+already-selected song in the same genre. The penalty is shown in the reasons,
+so the fairness intervention is visible rather than hidden.
 
-3. Run the app:
-
-   ```bash
-   python -m src.main
-   ```
-
-### Running Tests
+## Setup and Run
 
 ```bash
-pytest
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m src.main
 ```
+
+Choose another ranking strategy or disable diversity reranking:
+
+```bash
+python -m src.main --mode genre_first
+python -m src.main --mode mood_first --top-k 3
+python -m src.main --mode energy_focus --no-diversity
+```
+
+## Tests
+
+```bash
+python -m pytest -q
+```
+
+Latest verified result:
+
+```text
+...............                                                          [100%]
+15 passed in 0.04s
+```
+
+The suite covers the required OOP and functional interfaces, CSV type
+conversion, top-k behavior, distinct profiles, every ranking mode, invalid
+mode errors, diversity penalties, formatted output, zero/negative `k`, and
+energy targets at and beyond the 0.0/1.0 boundaries.
 
 ## Sample Recommendation Output
 
+The CLI prints full tables. These are the top three results from a verified
+`balanced` run with diversity reranking enabled.
+
+### High-Energy Happy Pop
+
 ```text
-Loaded songs: 17
-
-High-Energy Happy Pop
-1. Sunrise City by Neon Echo - Score: 4.47
-   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.47)
-2. Gym Hero by Max Pulse - Score: 3.31
-   Because: genre match (+2.00); energy similarity (+1.30)
-3. Rooftop Lights by Indigo Parade - Score: 2.44
-   Because: mood match (+1.00); energy similarity (+1.44)
-
-Chill Acoustic Lofi
-1. Library Rain by Paper Lanterns - Score: 5.00
-   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.50); acousticness similarity (+0.49)
-2. Midnight Coding by LoRoom - Score: 4.83
-   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.40); acousticness similarity (+0.43)
-3. Focus Flow by LoRoom - Score: 3.89
-   Because: genre match (+2.00); energy similarity (+1.42); acousticness similarity (+0.47)
-
-Deep Intense Rock
-1. Storm Runner by Voltline - Score: 4.49
-   Because: genre match (+2.00); mood match (+1.00); energy similarity (+1.48)
-2. Gym Hero by Max Pulse - Score: 2.48
-   Because: mood match (+1.00); energy similarity (+1.48)
-3. Neon Pulse by Kairo Flux - Score: 1.43
-   Because: energy similarity (+1.43)
+1  Sunrise City    Neon Echo       6.00  genre match; mood match; energy, danceability, popularity, release-year, speechiness, and duration similarities
+2  Gym Hero        Max Pulse       4.62  genre match; energy and profile similarities; diversity penalty (-0.25)
+3  Rooftop Lights  Indigo Parade  3.99  mood match; energy and profile similarities
 ```
 
-## Experiments You Tried
+`Sunrise City` ranks first because it directly matches both genre and mood and
+nearly matches the 0.80 energy target. `Gym Hero` keeps a strong genre and
+energy score but loses 0.25 because another pop song was already selected.
 
-- **Profile comparison:** Happy Pop selected `Sunrise City`; Chill Lofi selected
-  `Library Rain`; Intense Rock selected `Storm Runner`. These results match the
-  profile features and show that one song does not dominate every list.
-- **Adversarial profile:** A user asking for EDM + sad + 0.95 energy receives
-  `Neon Pulse` first because the catalog has no sad EDM song. This exposes a
-  coverage gap instead of inventing a perfect match.
-- **Weight-shift experiment:** Reducing genre from 2.0 to 0.5 and doubling the
-  energy contribution moved `Rooftop Lights` above `Gym Hero`. The change made
-  close-energy songs more competitive, but also weakened the user's explicit
-  genre preference.
+### Chill Acoustic Lofi
 
-## Limitations and Risks
+```text
+1  Library Rain        Paper Lanterns  6.43  genre match; mood match; energy, acousticness, instrumentalness, and profile similarities
+2  Midnight Coding     LoRoom          6.01  genre match; mood match; energy and profile similarities; diversity penalty (-0.25)
+3  Spacewalk Thoughts  Orbit Bloom     4.15  mood match; energy, acousticness, instrumentalness, and profile similarities
+```
 
-- The 17-song classroom catalog is too small to represent real musical taste.
-- Exact text matches treat related genres such as `pop` and `indie pop` as
-  unrelated.
-- Fixed weights can create a filter bubble by repeatedly rewarding the same
-  genre and mood.
-- The model has no listening history, skip behavior, lyrics, culture, language,
-  or changing context.
+This profile shifts toward low-energy, highly acoustic and instrumental tracks.
+`Library Rain` wins because it satisfies the lofi/chill text features and the
+numeric targets at the same time.
+
+### Deep Intense Rock
+
+```text
+1  Storm Runner   Voltline      5.95  genre match; mood match; energy and profile similarities
+2  Gym Hero       Max Pulse     3.89  mood match; energy and profile similarities
+3  Salsa Skyline  Luna Mercado  2.85  energy and profile similarities
+```
+
+This profile is dominated by `Storm Runner` because it is the only direct
+rock/intense match. The other results remain competitive through energy and
+new numeric attributes rather than receiving a generic explanation.
+
+### Conflicted Sad Workout (Adversarial Profile)
+
+```text
+1  Neon Pulse     Kairo Flux    5.36  genre match; energy, danceability, and profile similarities
+2  Gym Hero       Max Pulse     3.38  energy, danceability, and profile similarities
+3  Salsa Skyline  Luna Mercado  3.26  energy, danceability, and profile similarities
+```
+
+The catalog has no sad EDM song. `Neon Pulse` therefore wins on EDM, energy,
+and danceability but receives no mood points. This exposes a coverage gap
+instead of pretending the catalog contains a perfect match.
+
+## Evaluation and Experiment
+
+- Different profiles produced different leaders: `Sunrise City`,
+  `Library Rain`, `Storm Runner`, and `Neon Pulse`.
+- Switching from `balanced` to `genre_first` increases an exact genre match
+  from 2.0 to 3.0 points. `energy_focus` instead raises energy's maximum from
+  1.5 to 3.0, which makes close-energy cross-genre songs more competitive.
+- Disabling diversity restores pure score order; enabling it can move a
+  different artist or genre upward and shows the applied penalty in the output.
+- The adversarial sad/EDM profile demonstrates that ranking is constrained by
+  available data. Good math cannot manufacture a missing catalog segment.
+
+## Limitations, Bias, and Fairness
+
+The 17 fictional songs are too small to represent real taste. Exact genre and
+mood matching treats related labels such as `pop` and `indie pop` as unrelated.
+Popularity can reinforce a popularity bias, while fixed weights can still
+create filter bubbles. Diversity reranking reduces repeated artists and genres
+in one recommendation list, but it does not make the underlying catalog
+balanced across cultures, languages, eras, or styles. VibeCompass should not be
+used for consequential decisions or as evidence of a person's identity or
+preferences.
 
 ## Reflection
 
-Read the complete [Model Card](model_card.md).
+The biggest learning moment was seeing that ranking code is simpler than
+choosing and validating the assumptions behind it. AI accelerated the modular
+implementation, edge-case tests, and documentation, but I verified every
+numeric conversion and ranking by running the program and tests. A useful AI
+suggestion was separating strategies from the scoring loop; a flawed early idea
+was to treat diversity as a post-processing shuffle, which would have made the
+results nondeterministic and unexplained. I kept a deterministic greedy penalty
+instead. If I continued, I would add hierarchical genre matching, learn weights
+from real feedback, expand and rebalance the catalog, and add a clear “no strong
+match” threshold.
 
-This project showed me that a recommendation can feel intelligent even when it
-is only a transparent weighted formula. The most important engineering step was
-not sorting the songs; it was deciding what each feature should mean and making
-the score explainable. Keeping the reasons beside every score made it much
-easier to catch results that were mathematically valid but did not match the
-profile's intent.
-
-AI helped accelerate the implementation and test design, but I still had to
-verify the import path, numeric conversions, and rankings by running the code.
-The conflicting EDM/sad profile was the clearest reminder that an algorithm can
-only choose from its data. A larger system would need broader data, learned or
-personalized weights, diversity controls, and feedback from real listeners.
+See [model_card.md](model_card.md) for the complete model card and
+[ai_interactions.md](ai_interactions.md) for the agentic stretch-work log.

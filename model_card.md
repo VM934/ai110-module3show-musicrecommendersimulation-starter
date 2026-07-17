@@ -1,78 +1,92 @@
-# 🎧 Model Card: Music Recommender Simulation
+# 🎧 Model Card: VibeCompass 2.0
 
 ## 1. Model Name
 
-**VibeCompass 1.0**
+**VibeCompass 2.0**
 
-## 2. Intended Use
+## 2. Goal / Task and Intended Use
 
-VibeCompass ranks a small song catalog for a listener who supplies a preferred
-genre, mood, and energy level. It is a classroom simulation for learning how
-features become predictions, not a production service or a substitute for a
-person's listening history. It assumes that the stated preferences describe the
-listener's current goal and that every catalog row is accurate.
+VibeCompass ranks a small classroom song catalog for a listener who supplies a
+preferred genre, mood, energy level, and optional numeric targets. It is an
+explainable simulation for learning how inputs, preferences, scoring, and
+ranking work. It is not a production recommender and should not be used to
+infer identity, mental state, culture, or sensitive personal traits.
 
-## 3. How the Model Works
+## 3. Data Used
 
-The recommender gives two points when a song's genre exactly matches, one point
-when its mood matches, and up to 1.5 points when its energy is close to the
-listener's target. Optional preferences for acousticness, valence, or
-danceability can add up to 0.5 points each. It scores every song, sorts the list,
-and returns the requested number of top results. I replaced the starter
-placeholders with CSV loading, numeric conversion, shared scoring logic,
-deterministic ranking, and explanations for every score.
+The catalog contains 17 fictional songs. Each row includes title, artist,
+genre, mood, energy, tempo, valence, danceability, and acousticness. Five
+agentic stretch attributes—popularity, release year, instrumentalness,
+speechiness, and duration—add more ways to distinguish listening contexts. The
+catalog has no real behavior logs, lyrics, language labels, user demographics,
+or geographic coverage, and its size makes every imbalance influential.
 
-## 4. Data
+## 4. Algorithm Summary
 
-The catalog contains 17 fictional songs. I kept the original 10 and added seven
-tracks spanning R&B, classical, hip hop, EDM, acoustic, Latin, and blues. Each
-row has genre, mood, energy, tempo, valence, danceability, and acousticness.
-Many languages, regional styles, hybrid genres, lyrics, release years, and real
-listener interactions are still missing.
+The default mode gives two points for an exact genre match, one point for an
+exact mood match, and up to 1.5 points for energy similarity. Optional numeric
+preferences add smaller similarity contributions. The scoring engine judges
+every song, sorts scores from high to low, and returns the requested top `k`.
+The Strategy pattern exposes `balanced`, `genre_first`, `mood_first`, and
+`energy_focus` modes. Optional diversity reranking uses a deterministic greedy
+step that subtracts 0.75 for each repeated artist and 0.25 for each repeated
+genre already selected; any penalty appears in the result explanation.
 
-## 5. Strengths
+## 5. Observed Behavior
 
-The system works best when the catalog contains a direct genre and mood match.
-`Sunrise City` ranks first for Happy Pop, `Library Rain` for Chill Lofi, and
-`Storm Runner` for Intense Rock. The continuous energy score also avoids an
-all-or-nothing comparison and gives nearby songs partial credit. The explanations
-make the result auditable without reading the code.
+Balanced-mode leaders were `Sunrise City` for Happy Pop, `Library Rain` for
+Chill Lofi, `Storm Runner` for Intense Rock, and `Neon Pulse` for the conflicting
+Sad EDM workout profile. The first three leaders each match the profile's core
+features. The last profile has no complete mood/genre match, so the system
+chooses an energetic EDM track and makes the missing mood contribution visible.
+Changing strategy weights changes scores as expected, and diversity reranking
+can promote a different artist or genre when the unadjusted list is repetitive.
 
-## 6. Limitations and Bias
+## 6. Limitations, Bias, and Fairness
 
-Exact genre and mood matching is brittle: `pop` does not match `indie pop`, and
-similar moods are treated as unrelated. Fixed weights may repeatedly favor a
-dominant genre, creating a filter bubble. A conflicting EDM/sad profile exposes
-another weakness: there is no sad EDM track, so the system returns energetic
-EDM rather than explaining that the catalog lacks a full match. Users whose
-tastes depend on lyrics, culture, language, novelty, or changing context are not
-well represented.
+Exact text matching is brittle: `pop` does not match `indie pop`. A small
+catalog can overrepresent whichever genres happen to have more rows. Including
+popularity may favor already popular music, and a fixed formula cannot represent
+changing or mixed tastes. The diversity penalty helps prevent a top list from
+repeating the same artist or genre, reducing one kind of filter bubble, but it
+cannot repair missing languages, cultures, genres, or artists. Historical or
+real-user deployment would require consent, privacy controls, larger balanced
+data, and ongoing fairness evaluation.
 
-## 7. Evaluation
+## 7. Evaluation Process
 
-I ran four profiles: High-Energy Happy Pop, Chill Acoustic Lofi, Deep Intense
-Rock, and a conflicting Sad EDM workout profile. I compared their top five
-results and checked that different profiles produced different leaders. I also
-reduced the genre weight from 2.0 to 0.5 and doubled the energy weight; this
-moved `Rooftop Lights` above `Gym Hero`, showing how sensitive the ranking is to
-human-selected weights. Six automated tests verify ordering, explanations,
-score structure, catalog loading, distinct profiles, and top-k behavior.
+I ran four distinct profiles and reviewed their top five results. Happy Pop and
+Chill Lofi differ because text matches and acoustic/instrumental targets pull
+them toward different catalog regions; Intense Rock shifts to `Storm Runner`
+because of its rock, intense, and 0.91-energy features; Sad EDM selects
+`Neon Pulse` on EDM and energy but gets no sad-mood points. I compared all four
+strategies, ran with diversity on and off, and tested an adversarial profile
+whose requested combination is absent. Fifteen automated tests cover score
+structure, top-k behavior, typed data, distinct leaders, strategy switching,
+diversity penalties, output formatting, invalid modes, and boundary inputs.
 
-## 8. Future Work
+## 8. Intended and Non-Intended Use
 
-I would add fuzzy or hierarchical genre matching, a diversity penalty for
-repeated artists and genres, and an explicit "no strong match" threshold. I
-would learn personalized weights from likes, skips, and repeat plays instead of
-using one formula for everyone. A larger, balanced catalog and a counterfactual
-explanation such as "this ranked higher because energy mattered more" would
-also improve usefulness.
+Intended: classroom demonstrations, transparent ranking experiments, and
+discussion of feature weighting and filter bubbles. Non-intended: production
+personalization, psychological inference, identity classification, hiring,
+education, credit, health, or any other consequential decision.
 
-## 9. Personal Reflection
+## 9. Ideas for Improvement
 
-The biggest lesson was that ranking code is simple compared with choosing and
-validating the assumptions behind it. AI accelerated the first implementation
-and helped surface edge cases, but I had to run the code and inspect the actual
-rankings to catch a broken module import and verify the math. I was surprised
-that a few transparent weights could produce plausible recommendations; that
-also made the bias risk feel more concrete, because small weight changes visibly
-changed what the user would hear.
+1. Add fuzzy and hierarchical genre/mood similarity instead of exact strings.
+2. Learn personalized weights from consented likes, skips, and repeat plays.
+3. Expand and audit the catalog for language, region, genre, era, and artist
+   balance, then evaluate fairness with metrics rather than one penalty.
+4. Add a calibrated “no strong match” threshold and counterfactual explanations.
+
+## 10. Personal Reflection
+
+The biggest lesson was that an explainable formula can feel intelligent even
+though every behavior comes from human-selected data and weights. AI helped me
+organize strategies, propose edge cases, and accelerate the repetitive dataset
+update. I still had to inspect every CSV conversion, reject a nondeterministic
+shuffle-based diversity idea, run the CLI, and verify the exact top results.
+The surprising part was how visibly a small weight change alters the user's
+experience. If I extended the project, I would focus first on broader data and
+evaluation rather than adding more opaque scoring complexity.
