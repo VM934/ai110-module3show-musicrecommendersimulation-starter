@@ -189,3 +189,32 @@ match” threshold.
 
 See [model_card.md](model_card.md) for the complete model card and
 [ai_interactions.md](ai_interactions.md) for the agentic stretch-work log.
+
+## Project 4: Applied AI System Extension
+
+This repository is also the base for the Week 8 Applied AI System project. The
+original system is the Project 3 VibeCompass recommender described above. The
+new integrated feature is a reliability harness in `src/reliability.py`:
+
+- validates numeric ranges and blank labels before ranking;
+- warns when the requested genre or mood is missing from the catalog;
+- abstains on invalid input, failed integrity checks, or low confidence;
+- verifies deterministic ranking, non-negative scores, and explanations;
+- runs predefined normal and adversarial cases through `evaluation.py`.
+
+The implemented data flow is documented as Mermaid source in
+[`architecture.mmd`](architecture.mmd), and the design reflection is in
+[`project4_reflection.md`](project4_reflection.md).
+
+Run the working system with the reliability layer:
+
+```bash
+python -m src.main --audit
+```
+
+Run the evaluation harness and tests:
+
+```bash
+python evaluation.py
+python -m pytest -q
+```

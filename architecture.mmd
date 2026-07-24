@@ -1,0 +1,16 @@
+flowchart LR
+    U["Listener profile"] --> V["Input validation guardrail"]
+    V -->|invalid| A["Abstain with actionable reason"]
+    V -->|valid| S["Weighted scoring strategy"]
+    C["Song catalog CSV"] --> S
+    S --> D["Diversity reranking"]
+    D --> R["Top-k recommendations and score reasons"]
+    R --> Q["Reliability audit"]
+    Q --> Q1["Stability check"]
+    Q --> Q2["Explanation integrity check"]
+    Q --> Q3["Confidence threshold"]
+    Q1 --> H["Human review"]
+    Q2 --> H
+    Q3 -->|pass| H
+    Q3 -->|fail| A
+    H --> O["CLI output"]

@@ -4,6 +4,7 @@ import argparse
 from typing import Iterable, List, Tuple
 
 from .recommender import SCORING_STRATEGIES, load_songs, recommend_songs
+from .reliability import audit_recommendations
 
 
 PROFILES = {
@@ -74,21 +75,45 @@ def format_table(recommendations: Iterable[Tuple[dict, float, str]]) -> str:
     return "\n".join([divider, render(headers), divider, *(render(row) for row in rows), divider])
 
 
-def main(mode: str = "balanced", diversify: bool = True, top_k: int = 5) -> None:
-    """Run four profiles with a selectable strategy and diversity control."""
+def main(
+    mode: str = "balanced",
+    diversify: bool = True,
+    top_k: int = 5,
+    audit: bool = False,
+) -> None:
+    """Run four profiles with selectable strategy and reliability controls."""
     songs = load_songs("data/songs.csv")
     print(f"Loaded songs: {len(songs)}")
     print(f"Scoring mode: {mode} | Diversity reranking: {'on' if diversify else 'off'}")
 
     for profile_name, user_prefs in PROFILES.items():
-        recommendations = recommend_songs(
-            user_prefs,
-            songs,
-            k=top_k,
-            mode=mode,
-            diversify=diversify,
-        )
         print(f"\n{profile_name}\n{'-' * len(profile_name)}")
+        if audit:
+            audit_result = audit_recommendations(
+                user_prefs,
+                songs,
+                k=top_k,
+                mode=mode,
+                diversify=diversify,
+            )
+            for warning in audit_result.warnings:
+                print(f"WARNING: {warning}")
+            if audit_result.abstained:
+                print(f"ABSTAINED: {audit_result.reason}")
+                continue
+            recommendations = audit_result.recommendations
+            passed = ", ".join(
+                name for name, result in audit_result.checks.items() if result
+            )
+            print(f"Reliability checks passed: {passed}")
+        else:
+            recommendations = recommend_songs(
+                user_prefs,
+                songs,
+                k=top_k,
+                mode=mode,
+                diversify=diversify,
+            )
         print(format_table(recommendations))
 
 
@@ -107,9 +132,19 @@ def parse_args() -> argparse.Namespace:
         help="Disable artist/genre diversity reranking.",
     )
     parser.add_argument("--top-k", type=int, default=5, help="Results per profile.")
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="Validate inputs and verify confidence, stability, and explanations.",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     arguments = parse_args()
-    main(arguments.mode, not arguments.no_diversity, arguments.top_k)
+    main(
+        arguments.mode,
+        not arguments.no_diversity,
+        arguments.top_k,
+        arguments.audit,
+    )
